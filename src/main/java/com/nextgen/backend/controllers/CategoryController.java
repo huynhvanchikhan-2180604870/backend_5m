@@ -30,6 +30,8 @@ public class CategoryController {
     @Autowired
     private RoleRepository roleRepository;
 
+
+
     @PostMapping()
     public ResponseEntity<?> createdCategory(@RequestBody CategoryDTO categoryDTO, @RequestHeader(JwtConstant.JWT_HEADER) String jwt) throws CategoryException, UserException {
         Map<String, String> handleError = new HashMap<>();
@@ -76,36 +78,116 @@ public class CategoryController {
         return new ResponseEntity<>(categoryServiceInterface.findAllCategories(), HttpStatus.OK);
     }
 
+//    @PutMapping("/{id}")
+//    public ResponseEntity<?> updateCategory(@PathVariable UUID id, @RequestBody CategoryDTO dto) throws CategoryException{
+//        CategoryDTO categoryDTO = new CategoryDTO();
+//        Map<String, String> handleException = new HashMap<>();
+//        try{
+//            categoryDTO = categoryServiceInterface.updateCategory(id, dto);
+//            return new ResponseEntity<>(categoryDTO, HttpStatus.OK);
+//        }catch (CategoryException ex){
+//            handleException.put("messege: ", ex.getMessage());
+//            handleException.put("status: ", "error");
+//            handleException.put("code: ", "500");
+//        }
+//        return new ResponseEntity<>(handleException, HttpStatus.OK);
+//    }
+
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateCategory(@PathVariable UUID id, @RequestBody CategoryDTO dto) throws CategoryException{
-        CategoryDTO categoryDTO = new CategoryDTO();
-        Map<String, String> handleException = new HashMap<>();
-        try{
-            categoryDTO = categoryServiceInterface.updateCategory(id, dto);
+    public ResponseEntity<?> updateCategory(@PathVariable UUID id, @RequestBody CategoryDTO dto,
+                                            @RequestHeader(JwtConstant.JWT_HEADER) String jwt) {
+        Map<String, String> handleError = new HashMap<>();
+        try {
+
+            User user = userServiceInterface.findUserProfileByJwt(jwt);
+
+
+            HashSet<Role> roles = new HashSet<>();
+            List<String> roleNames = roleCustomRepository.getAllRoles(user);
+            roleNames.forEach(roleName -> {
+                Role role = roleRepository.findByName(roleName);
+                roles.add(role);
+            });
+
+
+            if (user == null || !roles.stream().anyMatch(role -> "ROLE_ADMIN".equals(role.getName()))) {
+                throw new CategoryException("Forbidden");
+            }
+
+
+            CategoryDTO categoryDTO = categoryServiceInterface.updateCategory(id, dto);
             return new ResponseEntity<>(categoryDTO, HttpStatus.OK);
-        }catch (CategoryException ex){
-            handleException.put("messege: ", ex.getMessage());
-            handleException.put("status: ", "error");
-            handleException.put("code: ", "500");
+        } catch (UserException ux) {
+            handleError.put("message", ux.getMessage());
+            handleError.put("status", "error");
+            handleError.put("code", "401"); // Unauthorized
+            return new ResponseEntity<>(handleError, HttpStatus.UNAUTHORIZED);
+        } catch (CategoryException ex) {
+            handleError.put("message", ex.getMessage());
+            handleError.put("status", "error");
+            handleError.put("code", "403"); // Forbidden
+            return new ResponseEntity<>(handleError, HttpStatus.FORBIDDEN);
         }
-        return new ResponseEntity<>(handleException, HttpStatus.OK);
     }
 
+
+//    @DeleteMapping("/{id}")
+//    public ResponseEntity<?> deleteCategory(@PathVariable UUID id) throws CategoryException{
+//        Map<String, String> handleException = new HashMap<>();
+//        Map<String, String> reponse = new HashMap<>();
+//        try{
+//            categoryServiceInterface.deleteCategory(id);
+//            reponse.put("messege: ", "Deleted successful");
+//            reponse.put("status: ", "success");
+//            reponse.put("code: ", "200");
+//            return new ResponseEntity<>(reponse, HttpStatus.OK);
+//        }catch (CategoryException ex){
+//            handleException.put("messege: ", ex.getMessage());
+//            handleException.put("status: ", "error");
+//            handleException.put("code: ", "404");
+//        }
+//        return new ResponseEntity<>(handleException, HttpStatus.OK);
+//    }
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteCategory(@PathVariable UUID id) throws CategoryException{
-        Map<String, String> handleException = new HashMap<>();
-        Map<String, String> reponse = new HashMap<>();
-        try{
+    public ResponseEntity<?> deleteCategory(@PathVariable UUID id,
+                                            @RequestHeader(JwtConstant.JWT_HEADER) String jwt) {
+        Map<String, String> handleError = new HashMap<>();
+        Map<String, String> response = new HashMap<>();
+        try {
+
+            User user = userServiceInterface.findUserProfileByJwt(jwt);
+
+
+            HashSet<Role> roles = new HashSet<>();
+            List<String> roleNames = roleCustomRepository.getAllRoles(user);
+            roleNames.forEach(roleName -> {
+                Role role = roleRepository.findByName(roleName);
+                roles.add(role);
+            });
+
+
+            if (user == null || !roles.stream().anyMatch(role -> "ROLE_ADMIN".equals(role.getName()))) {
+                throw new CategoryException("Forbidden");
+            }
+
+
             categoryServiceInterface.deleteCategory(id);
-            reponse.put("messege: ", "Deleted successful");
-            reponse.put("status: ", "success");
-            reponse.put("code: ", "200");
-            return new ResponseEntity<>(reponse, HttpStatus.OK);
-        }catch (CategoryException ex){
-            handleException.put("messege: ", ex.getMessage());
-            handleException.put("status: ", "error");
-            handleException.put("code: ", "404");
+            response.put("message", "Deleted successfully");
+            response.put("status", "success");
+            response.put("code", "200");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (UserException ux) {
+            handleError.put("message", ux.getMessage());
+            handleError.put("status", "error");
+            handleError.put("code", "401"); // Unauthorized
+            return new ResponseEntity<>(handleError, HttpStatus.UNAUTHORIZED);
+        } catch (CategoryException ex) {
+            handleError.put("message", ex.getMessage());
+            handleError.put("status", "error");
+            handleError.put("code", "403"); // Forbidden
+            return new ResponseEntity<>(handleError, HttpStatus.FORBIDDEN);
         }
-        return new ResponseEntity<>(handleException, HttpStatus.OK);
     }
+
 }
